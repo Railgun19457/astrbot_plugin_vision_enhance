@@ -1,0 +1,170 @@
+{
+  "enabled": {
+    "type": "bool",
+    "description": "启用插件",
+    "hint": "总开关。关闭后插件不处理任何消息，图片原样交给模型。",
+    "default": true
+  },
+  "markdown_image": {
+    "type": "object",
+    "description": "Markdown 内嵌图还原",
+    "hint": "部分平台（如 QQ 官方机器人）下发的图片是 Markdown 语法文本，模型只能看到 URL。开启后会把它们还原成真正的图片。",
+    "items": {
+      "enable": {
+        "type": "bool",
+        "description": "启用还原",
+        "default": true
+      },
+      "url_whitelist": {
+        "type": "list",
+        "description": "域名白名单",
+        "hint": "只处理这些域名的图片，留空表示不限制。每行一个域名，例如 qqbot.ugcimg.cn。可防止插件请求任意 URL。",
+        "default": []
+      },
+      "download_timeout": {
+        "type": "int",
+        "description": "下载超时（秒）",
+        "hint": "单个图片的下载超时时间。网络较慢时可调大。",
+        "default": 10,
+        "slider": { "min": 1, "max": 60, "step": 1 }
+      },
+      "max_download_mb": {
+        "type": "float",
+        "description": "单张图片大小上限（MB）",
+        "hint": "超过该大小的图片不会被下载。防止超大文件拖垮下载流程。",
+        "default": 10.0,
+        "slider": { "min": 1, "max": 50, "step": 0.5 }
+      },
+      "placeholder": {
+        "type": "string",
+        "description": "替换后的占位文本",
+        "hint": "Markdown 图片语法被替换成图片后，原位置留下的文本。留空则不保留任何文本。",
+        "default": "[图片]"
+      },
+      "keep_alt_text": {
+        "type": "bool",
+        "description": "保留 alt 文本",
+        "hint": "开启后把 Markdown 的 alt 内容（例如图片尺寸 #380px #330px）一并保留在占位文本里。",
+        "default": false
+      },
+      "scan_quoted": {
+        "type": "bool",
+        "description": "处理引用消息",
+        "hint": "开启后，被引用（回复）的消息里的 Markdown 图片也会被还原。",
+        "default": true
+      }
+    }
+  },
+  "animation": {
+    "type": "object",
+    "description": "动图抽帧",
+    "hint": "很多模型无法直接读取动图，只会取第一帧或直接报错。开启后把动图抽成若干张静态图再交给模型。支持 GIF / WebP / APNG。",
+    "items": {
+      "enable": {
+        "type": "bool",
+        "description": "启用抽帧",
+        "default": true
+      },
+      "min_frames": {
+        "type": "int",
+        "description": "最少抽帧数量",
+        "hint": "无论按哪种规则计算，最终都不会少于这个数量（除非动图本身帧数不够）。",
+        "default": 2,
+        "slider": { "min": 1, "max": 16, "step": 1 }
+      },
+      "max_frames": {
+        "type": "int",
+        "description": "最多抽帧数量",
+        "hint": "抽帧数量的上限，也是未配置间隔和比例时默认抽取的帧数。帧数越多占用的上下文越多。",
+        "default": 4,
+        "slider": { "min": 1, "max": 32, "step": 1 }
+      },
+      "interval": {
+        "type": "int",
+        "description": "抽帧间隔（帧）",
+        "hint": "大于 0 时生效，表示每隔 N 帧取一帧（不按时间，按帧序号）。优先级最高。填 0 表示不使用此规则。",
+        "default": 0,
+        "slider": { "min": 0, "max": 60, "step": 1 }
+      },
+      "ratio": {
+        "type": "float",
+        "description": "抽帧比例",
+        "hint": "在 0 到 1 之间时生效，表示抽取总帧数的百分之多少，例如 0.1 表示抽 10%。间隔为 0 时才会使用。填 0 表示不使用。",
+        "default": 0.0,
+        "slider": { "min": 0, "max": 1, "step": 0.05 }
+      },
+      "skip_first": {
+        "type": "bool",
+        "description": "跳过第一帧",
+        "hint": "很多动图的第一帧是封面或空白帧，跳过可以让抽到的内容更有意义。",
+        "default": true
+      },
+      "output_mode": {
+        "type": "string",
+        "description": "输出方式",
+        "hint": "独立图片：每帧作为一张单独的图片，清晰度高但会占用多个图片位置。拼接大图：所有帧拼成一张图，只占一个图片位置，单帧分辨率会下降。",
+        "default": "separate",
+        "options": ["separate", "grid"]
+      },
+      "grid_columns": {
+        "type": "int",
+        "description": "拼接列数",
+        "hint": "仅在输出方式为拼接大图时生效。填 0 表示自动按平方根计算，形成接近正方形的排布。",
+        "default": 0,
+        "slider": { "min": 0, "max": 8, "step": 1 }
+      },
+      "grid_label_frames": {
+        "type": "bool",
+        "description": "拼接图标序号",
+        "hint": "在拼接大图的每一帧上标注序号，帮助模型理解帧的先后顺序。",
+        "default": true
+      },
+      "max_edge": {
+        "type": "int",
+        "description": "单帧最长边（像素）",
+        "hint": "抽出的帧会被缩放到不超过该尺寸。这是控制上下文占用最有效的手段，数值越大越清晰也越占空间。",
+        "default": 768,
+        "slider": { "min": 128, "max": 2048, "step": 64 }
+      },
+      "keep_original": {
+        "type": "bool",
+        "description": "附带原图路径",
+        "hint": "把原始图片在本地的路径作为文本一并交给模型，方便它对该文件做后续操作。直接复用框架已保存的临时文件，不会额外占用磁盘。",
+        "default": false
+      },
+      "keep_original_copy": {
+        "type": "bool",
+        "description": "持久保存原图",
+        "hint": "把原图额外复制到插件的数据目录长期保存，这样在后续对话轮次里依然可以读取。注意框架的临时文件很快会被清理，只有开启此项才能跨轮次使用。需要占用额外磁盘，受下面两项限制。",
+        "default": false
+      },
+      "keep_original_max_files": {
+        "type": "int",
+        "description": "持久原图数量上限",
+        "hint": "仅在开启「持久保存原图」时生效，超出后按时间淘汰最旧的文件。",
+        "default": 200,
+        "slider": { "min": 10, "max": 2000, "step": 10 }
+      },
+      "keep_original_max_mb": {
+        "type": "int",
+        "description": "持久原图总大小上限（MB）",
+        "hint": "仅在开启「持久保存原图」时生效，超出后按时间淘汰最旧的文件。",
+        "default": 200,
+        "slider": { "min": 20, "max": 5000, "step": 20 }
+      },
+      "scan_quoted": {
+        "type": "bool",
+        "description": "处理引用消息",
+        "hint": "开启后，被引用（回复）的消息里的动图也会被抽帧。",
+        "default": true
+      }
+    }
+  },
+  "max_images_per_message": {
+    "type": "int",
+    "description": "单条消息新增图片上限",
+    "hint": "插件在一条消息里最多新增多少张图片，动图抽帧和 Markdown 图片还原都会计入。达到上限后，剩余的图片保持原样不再处理（不会删除消息里原有的图片，因此最终总数可能超过此值）。用于避免多个动图叠加产生过多图片，建议保持在 10 左右。",
+    "default": 10,
+    "slider": { "min": 1, "max": 50, "step": 1 }
+  }
+}
