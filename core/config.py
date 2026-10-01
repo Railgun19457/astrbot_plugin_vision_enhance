@@ -94,19 +94,7 @@ class AnimationConfig:
     grid_label_frames: bool = True
     max_edge: int = 768
     keep_original: bool = False
-    keep_original_copy: bool = False
-    keep_original_max_files: int = 200
-    keep_original_max_mb: int = 200
     scan_quoted: bool = True
-
-    @property
-    def expose_original_path(self) -> bool:
-        """Whether the original file path should be handed to the model.
-
-        A persistent copy is useless unless the model is told where it is, so
-        enabling the copy also enables the path hint.
-        """
-        return self.keep_original or self.keep_original_copy
 
 
 @dataclass
@@ -192,11 +180,6 @@ def _load_animation(raw: object) -> AnimationConfig:
         grid_label_frames=_as_bool(data.get("grid_label_frames"), True),
         max_edge=_as_int(data.get("max_edge"), 768, minimum=1),
         keep_original=_as_bool(data.get("keep_original"), False),
-        keep_original_copy=_as_bool(data.get("keep_original_copy"), False),
-        keep_original_max_files=_as_int(
-            data.get("keep_original_max_files"), 200, minimum=1
-        ),
-        keep_original_max_mb=_as_int(data.get("keep_original_max_mb"), 200, minimum=1),
         scan_quoted=_as_bool(data.get("scan_quoted"), True),
     )
 

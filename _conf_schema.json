@@ -129,28 +129,8 @@
       "keep_original": {
         "type": "bool",
         "description": "附带原图路径",
-        "hint": "把原始图片在本地的路径作为文本一并交给模型，方便它对该文件做后续操作。直接复用框架已保存的临时文件，不会额外占用磁盘。",
+        "hint": "把原始图片在本地的路径作为文本一并交给模型，方便它对该文件做后续操作。直接复用框架已保存的临时文件，不会额外占用磁盘。注意：这些临时文件会在本轮消息处理结束后被清理，因此路径仅在当前这一轮对话中有效。",
         "default": false
-      },
-      "keep_original_copy": {
-        "type": "bool",
-        "description": "持久保存原图",
-        "hint": "把原图额外复制到插件的数据目录长期保存，这样在后续对话轮次里依然可以读取。注意框架的临时文件很快会被清理，只有开启此项才能跨轮次使用。需要占用额外磁盘，受下面两项限制。",
-        "default": false
-      },
-      "keep_original_max_files": {
-        "type": "int",
-        "description": "持久原图数量上限",
-        "hint": "仅在开启「持久保存原图」时生效，超出后按时间淘汰最旧的文件。",
-        "default": 200,
-        "slider": { "min": 10, "max": 2000, "step": 10 }
-      },
-      "keep_original_max_mb": {
-        "type": "int",
-        "description": "持久原图总大小上限（MB）",
-        "hint": "仅在开启「持久保存原图」时生效，超出后按时间淘汰最旧的文件。",
-        "default": 200,
-        "slider": { "min": 20, "max": 5000, "step": 20 }
       },
       "scan_quoted": {
         "type": "bool",

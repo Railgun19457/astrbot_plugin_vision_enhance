@@ -27,7 +27,6 @@ from .core import chain as chain_ops
 from .core import markdown_image
 from .core.animation import is_animated, split_animation
 from .core.config import PluginConfig, load_config
-from .core.originals import copy_into_store, prune_store
 
 PLUGIN_NAME = "astrbot_plugin_vision_enhance"
 
@@ -48,9 +47,8 @@ class VisionEnhancePlugin(Star):
         self.temp_dir: Path = self.data_dir / "temp"
 
     async def initialize(self) -> None:
-        """Prepare the working directory and apply the store limits."""
+        """Prepare the working directory used for generated frames."""
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        await self._prune_originals()
 
     async def terminate(self) -> None:
         """Release anything owned by the plugin when it is unloaded."""
@@ -245,9 +243,8 @@ class VisionEnhancePlugin(Star):
     ) -> None:
         """Tell the model where the untouched original image lives.
 
-        AstrBot deletes received media once the pipeline finishes, so a plain
-        reference stays valid for the current turn only. A persistent copy is
-        what lets the path survive into later turns.
+        AstrBot deletes received media once the pipeline finishes, so the
+        reference stays valid for the current turn only.
 
         Args:
             event: Event whose chain receives the hint.
@@ -256,44 +253,20 @@ class VisionEnhancePlugin(Star):
             frame_indices: Source frame indices that were extracted.
         """
         cfg = self.config.animation
-        if not cfg.expose_original_path or not components or not original_path:
+        if not cfg.keep_original or not components or not original_path:
             return
-
-        path = original_path
-        if cfg.keep_original_copy:
-            stored = await copy_into_store(path, self.data_dir)
-            if stored:
-                path = stored
-                await self._prune_originals()
 
         frames = ", ".join(str(index) for index in frame_indices)
         hint = (
             f"[Animated image: frames {frames} extracted. The original file is "
-            f"available at [Image Attachment: path {path}]]"
+            f"available at [Image Attachment: path {original_path}]]"
         )
         components.append(Plain(hint))
         event.message_str = f"{event.message_str} {hint}".strip()
 
-    async def _prune_originals(self) -> None:
-        """Apply the persistent store limits."""
-        cfg = self.config.animation
-        if not cfg.keep_original_copy:
-            return
-        deleted = await asyncio.to_thread(
-            prune_store,
-            self.data_dir,
-            cfg.keep_original_max_files,
-            cfg.keep_original_max_mb,
-        )
-        if deleted:
-            logger.info("[VisionEnhance] Pruned %d stored original image(s).", deleted)
-
     @staticmethod
     def _track(event: AstrMessageEvent, path: str | None) -> None:
         """Register a temporary file for cleanup when the event finishes.
-
-        Persistent copies must never be registered here, because the framework
-        deletes every tracked file when the pipeline finishes.
 
         Args:
             event: Event that owns the file.
