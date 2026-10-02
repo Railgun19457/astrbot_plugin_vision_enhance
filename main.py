@@ -16,19 +16,16 @@ Two framework details drive the structure:
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import BaseMessageComponent, Image, Plain
-from astrbot.api.star import Context, Star, StarTools
+from astrbot.api.star import Context, Star
 
 from .core import chain as chain_ops
 from .core import markdown_image
 from .core.animation import is_animated, split_animation
 from .core.config import PluginConfig, load_config
-
-PLUGIN_NAME = "astrbot_plugin_vision_enhance"
 
 # Run before other plugins so that they observe the restored images. Higher
 # numbers execute first.
@@ -43,12 +40,6 @@ class VisionEnhancePlugin(Star):
         self.context = context
         self.raw_config = config if config is not None else {}
         self.config: PluginConfig = load_config(self.raw_config)
-        self.data_dir: Path = StarTools.get_data_dir(PLUGIN_NAME)
-        self.temp_dir: Path = self.data_dir / "temp"
-
-    async def initialize(self) -> None:
-        """Prepare the working directory used for generated frames."""
-        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     async def terminate(self) -> None:
         """Release anything owned by the plugin when it is unloaded."""
@@ -186,7 +177,7 @@ class VisionEnhancePlugin(Star):
             if not path or not await asyncio.to_thread(is_animated, path):
                 continue
 
-            result = await split_animation(path, cfg, self.temp_dir)
+            result = await split_animation(path, cfg)
             if not result.paths:
                 logger.info(
                     "[VisionEnhance] Could not split a %d-frame animation; "

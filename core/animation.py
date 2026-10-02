@@ -182,24 +182,21 @@ def _spread_from(indices: list[int], count: int) -> list[int]:
 async def split_animation(
     path: str,
     cfg: AnimationConfig,
-    temp_dir: Path | None = None,
 ) -> SplitResult:
     """Split an animated image into still images.
 
     Args:
         path: Local path of the source image.
         cfg: Animation settings.
-        temp_dir: Directory for produced files. Defaults to AstrBot's temp
-            directory so that the framework's cleaner eventually removes them.
 
     Returns:
-        A :class:`SplitResult`. Failures are reported as a result with
-        ``animated = True`` and no paths, so the caller can fall back to the
-        original image.
+        A :class:`SplitResult`. Produced files land in AstrBot's shared temp
+        directory so that the framework's own cleaner eventually removes them.
+        Failures are reported as a result with ``animated = True`` and no
+        paths, so the caller can fall back to the original image.
     """
-    target_dir = temp_dir or Path(get_astrbot_temp_path())
     try:
-        return await asyncio.to_thread(_split_sync, path, cfg, target_dir)
+        return await asyncio.to_thread(_split_sync, path, cfg)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "[VisionEnhance] Failed to split animation %s: %s", path, exc, exc_info=True
@@ -207,17 +204,17 @@ async def split_animation(
         return SplitResult(paths=[])
 
 
-def _split_sync(path: str, cfg: AnimationConfig, temp_dir: Path) -> SplitResult:
+def _split_sync(path: str, cfg: AnimationConfig) -> SplitResult:
     """Run frame extraction synchronously.
 
     Args:
         path: Local path of the source image.
         cfg: Animation settings.
-        temp_dir: Directory for produced files.
 
     Returns:
         The extraction result.
     """
+    temp_dir = Path(get_astrbot_temp_path())
     with PILImage.open(path) as image:
         total_frames = _frame_count(image)
         if total_frames <= 1:
