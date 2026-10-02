@@ -2,6 +2,6 @@ name: astrbot_plugin_vision_enhance
 display_name: 视觉增强
 desc: 还原 Markdown 内嵌图片、把动图抽帧后再交给模型，让模型真正看见用户发的图片
 short_desc: 还原 Markdown 图片与动图抽帧
-version: v0.1.0
+version: v0.1.1
 author: Railgun19457
 repo: https://github.com/Railgun19457/astrbot_plugin_vision_enhance
