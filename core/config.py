@@ -18,6 +18,10 @@ OUTPUT_MODE_SEPARATE = "separate"
 OUTPUT_MODE_GRID = "grid"
 OUTPUT_MODES = frozenset({OUTPUT_MODE_SEPARATE, OUTPUT_MODE_GRID})
 
+# Output mode used when the setting is missing. Must match the ``output_mode``
+# default in ``_conf_schema.json``.
+DEFAULT_OUTPUT_MODE = OUTPUT_MODE_GRID
+
 # Placeholders available in the animation hint template. Each name maps to
 # ``{description, sample}``, where ``sample`` shows the shape of the values that
 # replace it so the fallback matches what users will actually see.
@@ -125,11 +129,11 @@ class AnimationConfig:
 
     enable: bool = True
     min_frames: int = 2
-    max_frames: int = 4
+    max_frames: int = 9
     interval: int = 0
     ratio: float = 0.0
     skip_first: bool = True
-    output_mode: str = OUTPUT_MODE_SEPARATE
+    output_mode: str = DEFAULT_OUTPUT_MODE
     grid_columns: int = 0
     grid_label_frames: bool = True
     max_edge: int = 768
@@ -183,7 +187,7 @@ def _load_animation(raw: object) -> AnimationConfig:
     data = _as_dict(raw)
 
     min_frames = _as_int(data.get("min_frames"), 2, minimum=1)
-    max_frames = _as_int(data.get("max_frames"), 4, minimum=1)
+    max_frames = _as_int(data.get("max_frames"), 9, minimum=1)
     if min_frames > max_frames:
         logger.warning(
             "[VisionEnhance] min_frames (%d) is greater than max_frames (%d); "
@@ -193,15 +197,14 @@ def _load_animation(raw: object) -> AnimationConfig:
         )
         min_frames = max_frames
 
-    output_mode = _as_str(data.get("output_mode"), OUTPUT_MODE_SEPARATE)
+    output_mode = _as_str(data.get("output_mode"), DEFAULT_OUTPUT_MODE)
     if output_mode not in OUTPUT_MODES:
         logger.warning(
             "[VisionEnhance] Unknown output_mode %r; falling back to %s.",
             output_mode,
-            OUTPUT_MODE_SEPARATE,
+            DEFAULT_OUTPUT_MODE,
         )
-        output_mode = OUTPUT_MODE_SEPARATE
-
+        output_mode = DEFAULT_OUTPUT_MODE
     ratio = _as_float(data.get("ratio"), 0.0, minimum=0.0)
     if ratio > 1.0:
         logger.warning(

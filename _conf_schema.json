@@ -76,7 +76,7 @@
         "type": "int",
         "description": "最多抽帧数量",
         "hint": "抽帧数量的上限，也是未配置间隔和比例时默认抽取的帧数。帧数越多占用的上下文越多。",
-        "default": 4,
+        "default": 9,
         "slider": { "min": 1, "max": 32, "step": 1 }
       },
       "interval": {
@@ -103,7 +103,7 @@
         "type": "string",
         "description": "输出方式",
         "hint": "独立图片：每帧作为一张单独的图片，清晰度高但会占用多个图片位置。拼接大图：所有帧拼成一张图，只占一个图片位置，单帧分辨率会下降。",
-        "default": "separate",
+        "default": "grid",
         "options": ["separate", "grid"]
       },
       "grid_columns": {

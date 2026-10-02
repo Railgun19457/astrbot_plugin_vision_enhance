@@ -22,7 +22,7 @@ from astrbot.core.utils.datetime_utils import generate_timestamp_id
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
 
-from .config import AnimationConfig
+from .config import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, AnimationConfig
 
 # Assembled grids are scaled down past this edge. Per-frame scaling already
 # respects ``max_edge``, so this only guards against very wide multi-column
@@ -140,7 +140,7 @@ def build_hint_values(
     """
     frames = ", ".join(str(index + 1) for index in result.frame_indices)
     duration = f"{result.duration:.2f}" if result.duration > 0 else ""
-    mode = cfg.output_mode if cfg.output_mode in {"separate", "grid"} else "separate"
+    mode = cfg.output_mode if cfg.output_mode in OUTPUT_MODES else DEFAULT_OUTPUT_MODE
     return {
         "total_frames": str(result.total_frames),
         "frame_count": str(len(result.frame_indices)),
