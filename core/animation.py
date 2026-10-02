@@ -47,6 +47,8 @@ class SplitResult:
             is produced this lists every frame included in the grid.
         total_frames: Total frame count reported by the source.
         is_grid: Whether the output is a single assembled grid image.
+        duration: Total playback time in seconds. Zero when the frame delays
+            are unavailable or report no duration.
     """
 
     animated: bool = False
@@ -54,6 +56,7 @@ class SplitResult:
     frame_indices: list[int] = field(default_factory=list)
     total_frames: int = 0
     is_grid: bool = False
+    duration: float = 0.0
 
 
 def is_animated(path: str) -> bool:
@@ -86,6 +89,66 @@ def _frame_count(image: PILImage.Image) -> int:
     if getattr(image, "is_animated", False):
         return int(getattr(image, "n_frames", 1))
     return int(getattr(image, "n_frames", 1))
+
+
+def _total_duration_ms(image: PILImage.Image) -> float:
+    """Sum the frame delays of an opened image.
+
+    Pillow exposes ``info["duration"]`` as the delay of the *current* frame, so
+    the value has to be read after seeking each frame. Reading it once on the
+    freshly opened image only yields the first frame's delay.
+
+    Args:
+        image: An image opened by Pillow.
+
+    Returns:
+        Total playback time in milliseconds. Zero when Pillow cannot report the
+        delays, for example when there is no duration metadata at all.
+    """
+    if not getattr(image, "is_animated", False):
+        return 0.0
+
+    total = 0.0
+    for index in range(int(getattr(image, "n_frames", 1))):
+        try:
+            image.seek(index)
+            total += float(image.info.get("duration", 0) or 0)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "[VisionEnhance] Cannot read the delay of frame %d: %s", index, exc
+            )
+            break
+    return total
+
+
+def build_hint_values(
+    result: SplitResult,
+    cfg: AnimationConfig,
+    original_path: str,
+) -> dict[str, str]:
+    """Build the placeholder values for the animation hint.
+
+    Args:
+        result: Outcome of the split that just happened.
+        cfg: Animation settings, used for the effective output mode.
+        original_path: Local path of the source image. Only exposed when the
+            original path hint is enabled.
+
+    Returns:
+        Placeholder values keyed by name. ``original_path`` is empty when the
+        path should not be revealed.
+    """
+    frames = ", ".join(str(index + 1) for index in result.frame_indices)
+    duration = f"{result.duration:.2f}" if result.duration > 0 else ""
+    mode = cfg.output_mode if cfg.output_mode in {"separate", "grid"} else "separate"
+    return {
+        "total_frames": str(result.total_frames),
+        "frame_count": str(len(result.frame_indices)),
+        "frame_indices": frames,
+        "output_mode": mode,
+        "duration": duration,
+        "original_path": original_path if cfg.keep_original else "",
+    }
 
 
 def select_frame_indices(total_frames: int, cfg: AnimationConfig) -> list[int]:
@@ -220,13 +283,22 @@ def _split_sync(path: str, cfg: AnimationConfig) -> SplitResult:
         if total_frames <= 1:
             return SplitResult(animated=False, total_frames=total_frames)
 
+        # Summing delays seeks every frame, so it is only worth doing when the
+        # configured template actually uses the duration.
+        duration = (
+            _total_duration_ms(image) / 1000 if "{duration}" in cfg.hint_text else 0.0
+        )
         indices = select_frame_indices(total_frames, cfg)
         if not indices:
-            return SplitResult(animated=True, total_frames=total_frames)
+            return SplitResult(
+                animated=True, total_frames=total_frames, duration=duration
+            )
 
         frames = _extract_frames(image, indices, cfg.max_edge)
         if not frames:
-            return SplitResult(animated=True, total_frames=total_frames)
+            return SplitResult(
+                animated=True, total_frames=total_frames, duration=duration
+            )
 
         try:
             if cfg.output_mode == "grid":
@@ -238,6 +310,7 @@ def _split_sync(path: str, cfg: AnimationConfig) -> SplitResult:
                     frame_indices=indices,
                     total_frames=total_frames,
                     is_grid=True,
+                    duration=duration,
                 )
             saved = _save_images(frames, temp_dir, "frame")
             return SplitResult(
@@ -245,6 +318,7 @@ def _split_sync(path: str, cfg: AnimationConfig) -> SplitResult:
                 paths=saved,
                 frame_indices=indices,
                 total_frames=total_frames,
+                duration=duration,
             )
         finally:
             for frame in frames:

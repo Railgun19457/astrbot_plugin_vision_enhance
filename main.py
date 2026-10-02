@@ -16,6 +16,7 @@ Two framework details drive the structure:
 from __future__ import annotations
 
 import asyncio
+import re
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -24,8 +25,13 @@ from astrbot.api.star import Context, Star
 
 from .core import chain as chain_ops
 from .core import markdown_image
-from .core.animation import is_animated, split_animation
-from .core.config import PluginConfig, load_config
+from .core.animation import build_hint_values, is_animated, split_animation
+from .core.config import (
+    ANIMATION_HINT_PLACEHOLDERS,
+    PluginConfig,
+    load_config,
+    render_animation_hint,
+)
 
 # Run before other plugins so that they observe the restored images. Higher
 # numbers execute first.
@@ -40,6 +46,29 @@ class VisionEnhancePlugin(Star):
         self.context = context
         self.raw_config = config if config is not None else {}
         self.config: PluginConfig = load_config(self.raw_config)
+        self._warn_unknown_placeholders()
+
+    def _warn_unknown_placeholders(self) -> None:
+        """Report placeholders in the hint template that will render as empty.
+
+        A typo would otherwise silently drop information from the conversation,
+        which is hard to notice once the plugin is in use.
+        """
+        template = self.config.animation.hint_text
+        if not template:
+            return
+        unknown = {
+            name
+            for name in re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", template)
+            if name not in ANIMATION_HINT_PLACEHOLDERS
+        }
+        if unknown:
+            logger.warning(
+                "[VisionEnhance] Unknown placeholder(s) in the animation hint "
+                "template: %s. Available: %s",
+                ", ".join(sorted(unknown)),
+                ", ".join(ANIMATION_HINT_PLACEHOLDERS),
+            )
 
     async def terminate(self) -> None:
         """Release anything owned by the plugin when it is unloaded."""
@@ -196,9 +225,13 @@ class VisionEnhancePlugin(Star):
             budget -= len(replacements)
 
             components[index : index + 1] = replacements
-            await self._append_original_hint(
-                event, components, path, result.frame_indices
+            hint = render_animation_hint(
+                cfg.hint_text,
+                build_hint_values(result, cfg, path),
             )
+            if cfg.hint_enable and hint:
+                components.append(Plain(hint))
+                event.message_str = f"{event.message_str} {hint}".strip()
         return budget
 
     async def _resolve_image_path(
@@ -224,36 +257,6 @@ class VisionEnhancePlugin(Star):
             return None
         self._track(event, path)
         return path
-
-    async def _append_original_hint(
-        self,
-        event: AstrMessageEvent,
-        components: list[BaseMessageComponent],
-        original_path: str,
-        frame_indices: list[int],
-    ) -> None:
-        """Tell the model where the untouched original image lives.
-
-        AstrBot deletes received media once the pipeline finishes, so the
-        reference stays valid for the current turn only.
-
-        Args:
-            event: Event whose chain receives the hint.
-            components: Component list the hint is appended to.
-            original_path: Local path of the source image.
-            frame_indices: Source frame indices that were extracted.
-        """
-        cfg = self.config.animation
-        if not cfg.keep_original or not components or not original_path:
-            return
-
-        frames = ", ".join(str(index) for index in frame_indices)
-        hint = (
-            f"[Animated image: frames {frames} extracted. The original file is "
-            f"available at [Image Attachment: path {original_path}]]"
-        )
-        components.append(Plain(hint))
-        event.message_str = f"{event.message_str} {hint}".strip()
 
     @staticmethod
     def _track(event: AstrMessageEvent, path: str | None) -> None:

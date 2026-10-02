@@ -132,6 +132,18 @@
         "hint": "把原始图片在本地的路径作为文本一并交给模型，方便它对该文件做后续操作。直接复用框架已保存的临时文件，不会额外占用磁盘。注意：这些临时文件会在本轮消息处理结束后被清理，因此路径仅在当前这一轮对话中有效。",
         "default": false
       },
+      "hint_enable": {
+        "type": "bool",
+        "description": "添加抽帧说明",
+        "hint": "在抽帧结果后追加一段文字，告诉模型这些图片来自同一个动图以及对应的帧序号。不开启时模型只会看到多张图片，可能误以为用户发了好几张不同的图。",
+        "default": true
+      },
+      "hint_text": {
+        "type": "text",
+        "description": "抽帧说明文本",
+        "hint": "可使用占位符，留空则不加任何说明。可用项：{total_frames} 总帧数、{frame_count} 本次抽帧数、{frame_indices} 抽出的帧序号（从 1 开始）、{output_mode} 输出方式、{duration} 动图总时长（秒）、{original_path} 原图路径（仅开启「附带原图路径」时有值）。填错名字的占位符会被替换为空并在日志中告警。",
+        "default": "[Animated image: {total_frames} frames in total, {frame_count} extracted (frames {frame_indices}).]"
+      },
       "scan_quoted": {
         "type": "bool",
         "description": "处理引用消息",
